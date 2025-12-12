@@ -269,12 +269,5 @@ For questions, issues, or suggestions:
 
 If you find this project useful, please consider giving it a star! It helps others discover the project.
 
-## 🔗 Related Projects
-
-- [MLOps Best Practices](https://ml-ops.org/)
-- [PyTorch Medical Imaging](https://github.com/Project-MONAI/MONAI)
-- [MLflow Examples](https://github.com/mlflow/mlflow)
-
----
 
 **Built with ❤️ for the MLOps and Healthcare AI community**
