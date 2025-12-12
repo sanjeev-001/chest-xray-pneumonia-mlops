@@ -1,0 +1,137 @@
+groups:
+  - name: chest_xray_alerts
+    rules:
+      # Model Performance Alerts
+      - alert: ModelAccuracyLow
+        expr: chest_xray_model_accuracy < 0.8
+        for: 5m
+        labels:
+          severity: critical
+          service: chest-xray-model
+        annotations:
+          summary: "Chest X-Ray model accuracy is below threshold"
+          description: "Model accuracy is {{ $value | humanizePercentage }}, below the 80% threshold"
+
+      - alert: HighResponseTime
+        expr: chest_xray_response_time_seconds{percentile="avg"} > 2.0
+        for: 2m
+        labels:
+          severity: warning
+          service: chest-xray-api
+        annotations:
+          summary: "High response time detected"
+          description: "Average response time is {{ $value }}s, exceeding 2s threshold"
+
+      - alert: HighErrorRate
+        expr: chest_xray_error_rate > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: chest-xray-api
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }}, exceeding 5% threshold"
+
+      - alert: LowThroughput
+        expr: chest_xray_throughput_rps < 1.0
+        for: 10m
+        labels:
+          severity: warning
+          service: chest-xray-api
+        annotations:
+          summary: "Low throughput detected"
+          description: "Throughput is {{ $value }} requests/second, below 1 RPS threshold"
+
+      # System Resource Alerts
+      - alert: HighCPUUsage
+        expr: chest_xray_cpu_usage_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: chest-xray-system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%, exceeding 90% threshold"
+
+      - alert: HighMemoryUsage
+        expr: chest_xray_memory_usage_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: chest-xray-system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}%, exceeding 90% threshold"
+
+      - alert: HighGPUMemoryUsage
+        expr: chest_xray_gpu_memory_mb > 7000  # Assuming 8GB GPU
+        for: 5m
+        labels:
+          severity: warning
+          service: chest-xray-system
+        annotations:
+          summary: "High GPU memory usage"
+          description: "GPU memory usage is {{ $value }}MB, approaching limit"
+
+      # Drift Detection Alerts
+      - alert: DataDriftDetected
+        expr: chest_xray_drift_score{drift_type="data"} > 0.5
+        for: 0m
+        labels:
+          severity: warning
+          service: chest-xray-model
+        annotations:
+          summary: "Data drift detected"
+          description: "Data drift score is {{ $value }}, indicating significant input data changes"
+
+      - alert: ConceptDriftDetected
+        expr: chest_xray_drift_score{drift_type="concept"} > 0.3
+        for: 0m
+        labels:
+          severity: critical
+          service: chest-xray-model
+        annotations:
+          summary: "Concept drift detected"
+          description: "Concept drift score is {{ $value }}, model retraining may be required"
+
+      - alert: PredictionDriftDetected
+        expr: chest_xray_drift_score{drift_type="prediction"} > 0.4
+        for: 0m
+        labels:
+          severity: warning
+          service: chest-xray-model
+        annotations:
+          summary: "Prediction drift detected"
+          description: "Prediction distribution has changed significantly (score: {{ $value }})"
+
+      # Service Health Alerts
+      - alert: ServiceDown
+        expr: up{job="chest-xray-monitoring"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: chest-xray-monitoring
+        annotations:
+          summary: "Monitoring service is down"
+          description: "The chest X-ray monitoring service has been down for more than 1 minute"
+
+      - alert: APIServiceDown
+        expr: up{job="chest-xray-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: chest-xray-api
+        annotations:
+          summary: "API service is down"
+          description: "The chest X-ray API service has been down for more than 1 minute"
+
+      # Active Alerts Monitoring
+      - alert: TooManyActiveAlerts
+        expr: chest_xray_active_alerts > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: chest-xray-monitoring
+        annotations:
+          summary: "Too many active alerts"
+          description: "There are {{ $value }} active alerts, indicating multiple system issues"

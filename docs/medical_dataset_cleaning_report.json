@@ -1,0 +1,46 @@
+{
+  "processing_summary": {
+    "source_path": "data\\chest_xray_cleaned",
+    "target_path": "data\\chest_xray_processed",
+    "processing_timestamp": "2025-10-26T11:41:20.379437",
+    "processing_time_seconds": 133.631214
+  },
+  "cleaning_statistics": {
+    "images_processed": 31,
+    "corrupted_removed": 0,
+    "duplicates_removed": 32,
+    "blurry_removed": 15,
+    "exposure_issues_fixed": 0,
+    "exposure_issues_removed": 0,
+    "contrast_enhanced": 1,
+    "augmented_images": 8
+  },
+  "final_dataset_structure": {
+    "train": {
+      "NORMAL": 1,
+      "NORMAL_augmented": 8,
+      "PNEUMONIA": 13
+    },
+    "val": {
+      "NORMAL": 7,
+      "PNEUMONIA": 8
+    },
+    "test": {
+      "PNEUMONIA": 2
+    }
+  },
+  "quality_statistics": {
+    "average_blur_score": 148.69852466749498,
+    "average_brightness": 0.4921754384476332,
+    "average_contrast": 0.22932880482584372,
+    "blur_score_std": 77.77613833807895,
+    "brightness_std": 0.0835691348090102,
+    "contrast_std": 0.03249083491532041
+  },
+  "thresholds_used": {
+    "blur_threshold": 100,
+    "brightness_low": 0.1,
+    "brightness_high": 0.9,
+    "contrast_threshold": 0.15
+  }
+}

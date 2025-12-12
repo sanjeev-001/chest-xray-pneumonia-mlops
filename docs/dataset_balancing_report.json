@@ -1,0 +1,29 @@
+{
+  "balancing_summary": {
+    "dataset_path": "data\\chest_xray_final",
+    "processing_timestamp": "2025-10-26T12:11:46.320567",
+    "processing_time_seconds": 10.817531
+  },
+  "class_distribution": {
+    "before_balancing": {
+      "NORMAL": 1011,
+      "PNEUMONIA": 2519,
+      "ratio": "1:2.49"
+    },
+    "after_balancing": {
+      "NORMAL_original": 1011,
+      "NORMAL_augmented": 1011,
+      "NORMAL_total": 2022,
+      "PNEUMONIA": 2519,
+      "ratio": "1:1.25"
+    }
+  },
+  "augmentation_details": {
+    "images_created": 1011,
+    "techniques_used": [
+      "horizontal_flip"
+    ],
+    "augmented_folder": "data\\chest_xray_final\\train\\NORMAL_augmented"
+  },
+  "balance_achieved": false
+}

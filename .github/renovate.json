@@ -1,0 +1,88 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    "docker:enableMajor",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":separatePatchReleases"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 6am on Monday"],
+  "labels": ["dependencies", "automated"],
+  "assignees": ["@admin"],
+  "reviewers": ["@admin"],
+  "packageRules": [
+    {
+      "description": "Group Python dependencies",
+      "matchManagers": ["pip_requirements"],
+      "groupName": "Python dependencies",
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "description": "Group Docker base image updates",
+      "matchManagers": ["dockerfile"],
+      "groupName": "Docker base images",
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "description": "Auto-merge patch updates for non-critical packages",
+      "matchUpdateTypes": ["patch"],
+      "matchPackagePatterns": [
+        "pytest",
+        "black",
+        "isort",
+        "flake8",
+        "mypy"
+      ],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Hold back major updates for ML frameworks",
+      "matchPackagePatterns": [
+        "torch",
+        "torchvision",
+        "tensorflow",
+        "scikit-learn",
+        "numpy",
+        "pandas"
+      ],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Security updates - high priority",
+      "matchPackagePatterns": ["*"],
+      "vulnerabilityAlerts": true,
+      "prPriority": 10,
+      "labels": ["security", "dependencies", "automated"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "vulnerability"],
+    "assignees": ["@admin"],
+    "reviewers": ["@admin"]
+  },
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Dependency Dashboard",
+  "dependencyDashboardHeader": "This dashboard shows all pending dependency updates.",
+  "dependencyDashboardFooter": "Managed by Renovate Bot 🤖",
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
+  "branchConcurrentLimit": 10,
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "chore:",
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to {{newVersion}}",
+  "prTitle": "{{commitMessagePrefix}} {{commitMessageAction}} {{commitMessageTopic}} {{commitMessageExtra}}",
+  "prBodyTemplate": "This PR updates {{depName}} from {{currentVersion}} to {{newVersion}}.\n\n{{#if hasReleaseNotes}}\n## Release Notes\n\n{{releaseNotes}}\n{{/if}}\n\n---\n\n🤖 This PR was generated automatically by Renovate Bot."
+}

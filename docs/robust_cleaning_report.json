@@ -1,0 +1,30 @@
+{
+  "processing_summary": {
+    "source_path": "data\\chest_xray_cleaned",
+    "target_path": "data\\chest_xray_final",
+    "processing_timestamp": "2025-10-26T12:02:30.232283",
+    "total_images_processed": 3904
+  },
+  "cleaning_statistics": {
+    "corrupted_removed": 0,
+    "duplicates_removed": 32,
+    "blurry_removed": 1920,
+    "images_standardized": 3904,
+    "images_augmented": 0
+  },
+  "final_dataset_structure": {
+    "train": {
+      "NORMAL": 1011,
+      "PNEUMONIA": 2519
+    },
+    "val": {
+      "NORMAL": 7,
+      "PNEUMONIA": 8
+    },
+    "test": {
+      "NORMAL": 65,
+      "PNEUMONIA": 294
+    }
+  },
+  "dataset_ready_for_training": true
+}

@@ -1,0 +1,40 @@
+{
+  "base_port": 8000,
+  "docker_image": "chest-xray-api",
+  "health_check_timeout": 30,
+  "health_check_retries": 5,
+  "deployment_timeout": 300,
+  
+  "validation_tests": {
+    "enabled": true,
+    "test_images": [
+      "test_data/normal_sample.jpg",
+      "test_data/pneumonia_sample.jpg"
+    ],
+    "expected_accuracy": 0.95,
+    "max_response_time_ms": 2000
+  },
+  
+  "rollback": {
+    "enabled": true,
+    "auto_rollback_on_failure": true
+  },
+  
+  "notifications": {
+    "enabled": false,
+    "webhook_url": null,
+    "email": null
+  },
+  
+  "environments": {
+    "staging": {
+      "auto_promote": true,
+      "validation_required": true
+    },
+    "production": {
+      "auto_promote": false,
+      "validation_required": true,
+      "manual_approval": true
+    }
+  }
+}

@@ -1,0 +1,397 @@
+# Backup and Disaster Recovery Strategy for MLOps Production
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-config
+  namespace: backup-system
+data:
+  backup-strategy.yaml: |
+    # Backup Strategy Configuration
+    backup:
+      # Database backups
+      database:
+        enabled: true
+        schedule: "0 2 * * *"  # Daily at 2 AM
+        retention: "30d"
+        compression: true
+        encryption: true
+        cross_region: true
+        backup_region: "us-west-2"
+        
+        # PostgreSQL specific settings
+        postgresql:
+          dump_format: "custom"
+          parallel_jobs: 4
+          exclude_tables:
+            - "audit_logs_temp"
+            - "session_data"
+      
+      # Model artifacts backup
+      model_artifacts:
+        enabled: true
+        schedule: "0 3 * * *"  # Daily at 3 AM
+        retention: "90d"
+        versioning: true
+        cross_region: true
+        backup_region: "us-west-2"
+        
+        # S3 sync settings
+        s3_sync:
+          delete_source: false
+          storage_class: "STANDARD_IA"
+          encryption: "AES256"
+      
+      # Application data backup
+      application_data:
+        enabled: true
+        schedule: "0 4 * * *"  # Daily at 4 AM
+        retention: "14d"
+        
+        # Kubernetes resources
+        kubernetes:
+          namespaces:
+            - "production-blue"
+            - "production-green"
+            - "monitoring"
+            - "argocd"
+          resources:
+            - "configmaps"
+            - "secrets"
+            - "persistentvolumeclaims"
+            - "deployments"
+            - "services"
+            - "ingresses"
+      
+      # Configuration backup
+      configuration:
+        enabled: true
+        schedule: "0 1 * * *"  # Daily at 1 AM
+        retention: "60d"
+        
+        # Git repositories
+        git_repos:
+          - "https://github.com/your-org/chest-xray-pneumonia-mlops"
+          - "https://github.com/your-org/mlops-infrastructure"
+        
+        # Terraform state
+        terraform_state:
+          backend: "s3"
+          bucket: "mlops-terraform-state"
+          versioning: true
+    
+    # Disaster Recovery Configuration
+    disaster_recovery:
+      # RTO (Recovery Time Objective)
+      rto: "4h"
+      
+      # RPO (Recovery Point Objective)
+      rpo: "1h"
+      
+      # Multi-region setup
+      regions:
+        primary: "us-east-1"
+        secondary: "us-west-2"
+      
+      # Failover strategy
+      failover:
+        automatic: false  # Manual approval required
+        health_checks:
+          - "database_connectivity"
+          - "model_server_health"
+          - "api_gateway_health"
+        
+        # Failover steps
+        steps:
+          1: "Stop traffic to primary region"
+          2: "Restore database from latest backup"
+          3: "Deploy applications to secondary region"
+          4: "Update DNS to point to secondary region"
+          5: "Validate all services are operational"
+          6: "Resume traffic"
+      
+      # Recovery procedures
+      recovery:
+        # Database recovery
+        database:
+          point_in_time_recovery: true
+          automated_backups: true
+          manual_snapshots: true
+        
+        # Application recovery
+        application:
+          blue_green_deployment: true
+          rollback_capability: true
+          health_validation: true
+        
+        # Data recovery
+        data:
+          model_artifacts: true
+          training_data: true
+          configuration_data: true
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: database-backup
+  namespace: backup-system
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: postgres-backup
+            image: postgres:15
+            env:
+            - name: PGHOST
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: host
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: password
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: database
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              # Create backup filename with timestamp
+              BACKUP_FILE="mlops-db-backup-$(date +%Y%m%d-%H%M%S).sql"
+              
+              echo "Starting database backup: $BACKUP_FILE"
+              
+              # Create database dump
+              pg_dump \
+                --format=custom \
+                --compress=9 \
+                --no-owner \
+                --no-privileges \
+                --verbose \
+                --file="/tmp/$BACKUP_FILE" \
+                "$PGDATABASE"
+              
+              # Upload to S3
+              aws s3 cp "/tmp/$BACKUP_FILE" "s3://mlops-backups/database/$BACKUP_FILE"
+              
+              # Upload to cross-region backup
+              aws s3 cp "/tmp/$BACKUP_FILE" "s3://mlops-backups-west/database/$BACKUP_FILE" --region us-west-2
+              
+              echo "Database backup completed: $BACKUP_FILE"
+              
+              # Cleanup old backups (keep last 30 days)
+              aws s3 ls s3://mlops-backups/database/ | \
+                awk '{print $4}' | \
+                head -n -30 | \
+                xargs -I {} aws s3 rm s3://mlops-backups/database/{}
+              
+              echo "Old backup cleanup completed"
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "200m"
+          restartPolicy: OnFailure
+          serviceAccountName: backup-service-account
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-artifacts-backup
+  namespace: backup-system
+spec:
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: s3-sync
+            image: amazon/aws-cli:latest
+            env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              echo "Starting model artifacts backup"
+              
+              # Sync model artifacts to backup bucket
+              aws s3 sync \
+                s3://chest-xray-pneumonia-mlops-production-model-artifacts \
+                s3://mlops-backups/model-artifacts \
+                --storage-class STANDARD_IA \
+                --server-side-encryption AES256
+              
+              # Cross-region backup
+              aws s3 sync \
+                s3://chest-xray-pneumonia-mlops-production-model-artifacts \
+                s3://mlops-backups-west/model-artifacts \
+                --region us-west-2 \
+                --storage-class STANDARD_IA \
+                --server-side-encryption AES256
+              
+              echo "Model artifacts backup completed"
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "200m"
+          restartPolicy: OnFailure
+          serviceAccountName: backup-service-account
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kubernetes-backup
+  namespace: backup-system
+spec:
+  schedule: "0 4 * * *"  # Daily at 4 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: kubectl-backup
+            image: bitnami/kubectl:latest
+            env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              BACKUP_DATE=$(date +%Y%m%d-%H%M%S)
+              BACKUP_DIR="/tmp/k8s-backup-$BACKUP_DATE"
+              
+              echo "Starting Kubernetes resources backup"
+              
+              mkdir -p "$BACKUP_DIR"
+              
+              # Backup namespaces
+              NAMESPACES=("production-blue" "production-green" "monitoring" "argocd")
+              
+              for ns in "${NAMESPACES[@]}"; do
+                echo "Backing up namespace: $ns"
+                mkdir -p "$BACKUP_DIR/$ns"
+                
+                # Backup different resource types
+                RESOURCES=("configmaps" "secrets" "deployments" "services" "ingresses" "persistentvolumeclaims")
+                
+                for resource in "${RESOURCES[@]}"; do
+                  kubectl get "$resource" -n "$ns" -o yaml > "$BACKUP_DIR/$ns/$resource.yaml" 2>/dev/null || true
+                done
+              done
+              
+              # Create tar archive
+              cd /tmp
+              tar -czf "k8s-backup-$BACKUP_DATE.tar.gz" "k8s-backup-$BACKUP_DATE"
+              
+              # Upload to S3
+              aws s3 cp "k8s-backup-$BACKUP_DATE.tar.gz" "s3://mlops-backups/kubernetes/k8s-backup-$BACKUP_DATE.tar.gz"
+              
+              echo "Kubernetes backup completed"
+              
+              # Cleanup
+              rm -rf "$BACKUP_DIR" "k8s-backup-$BACKUP_DATE.tar.gz"
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "200m"
+          restartPolicy: OnFailure
+          serviceAccountName: backup-service-account
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-service-account
+  namespace: backup-system
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/backup-service-role
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: backup-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backup-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: backup-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: backup-service-account
+  namespace: backup-system

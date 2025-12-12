@@ -1,0 +1,253 @@
+name: Security Scanning
+
+on:
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install safety pip-audit
+        
+    - name: Run Safety check for known vulnerabilities
+      run: |
+        safety check --json --output safety-report.json || true
+        
+    - name: Run pip-audit for dependency vulnerabilities
+      run: |
+        pip-audit --format=json --output=pip-audit-report.json || true
+        
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-security-reports
+        path: |
+          safety-report.json
+          pip-audit-report.json
+          
+    - name: Check for critical vulnerabilities
+      run: |
+        python -c "
+        import json
+        import sys
+        
+        # Check Safety report
+        try:
+            with open('safety-report.json', 'r') as f:
+                safety_data = json.load(f)
+            
+            if safety_data and len(safety_data) > 0:
+                critical_vulns = [v for v in safety_data if v.get('severity', '').lower() in ['critical', 'high']]
+                if critical_vulns:
+                    print(f'❌ Found {len(critical_vulns)} critical/high severity vulnerabilities')
+                    for vuln in critical_vulns[:5]:  # Show first 5
+                        print(f'  - {vuln.get(\"package\", \"unknown\")}: {vuln.get(\"vulnerability\", \"\")}')
+                    sys.exit(1)
+                else:
+                    print('✅ No critical vulnerabilities found in Safety scan')
+            else:
+                print('✅ No vulnerabilities found in Safety scan')
+        except (FileNotFoundError, json.JSONDecodeError):
+            print('⚠️ Could not parse Safety report')
+        
+        # Check pip-audit report
+        try:
+            with open('pip-audit-report.json', 'r') as f:
+                audit_data = json.load(f)
+            
+            if audit_data and 'vulnerabilities' in audit_data:
+                critical_vulns = [v for v in audit_data['vulnerabilities'] 
+                                if v.get('fix_versions') and len(v.get('fix_versions', [])) > 0]
+                if critical_vulns:
+                    print(f'⚠️ Found {len(critical_vulns)} vulnerabilities with available fixes')
+                    for vuln in critical_vulns[:3]:  # Show first 3
+                        package = vuln.get('package', {}).get('name', 'unknown')
+                        print(f'  - {package}: {vuln.get(\"id\", \"\")}')
+                else:
+                    print('✅ No fixable vulnerabilities found in pip-audit scan')
+            else:
+                print('✅ No vulnerabilities found in pip-audit scan')
+        except (FileNotFoundError, json.JSONDecodeError):
+            print('⚠️ Could not parse pip-audit report')
+        "
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run TruffleHog secret scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+        
+    - name: Run GitLeaks secret scan
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  code-security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install security scanning tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit semgrep
+        
+    - name: Run Bandit security scan
+      run: |
+        bandit -r . -f json -o bandit-security-report.json || true
+        bandit -r . -f txt || true
+        
+    - name: Run Semgrep security scan
+      run: |
+        semgrep --config=auto --json --output=semgrep-report.json . || true
+        
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      with:
+        name: code-security-reports
+        path: |
+          bandit-security-report.json
+          semgrep-report.json
+          
+    - name: Check for high-severity issues
+      run: |
+        python -c "
+        import json
+        import sys
+        
+        # Check Bandit report
+        try:
+            with open('bandit-security-report.json', 'r') as f:
+                bandit_data = json.load(f)
+            
+            high_severity = [r for r in bandit_data.get('results', []) 
+                           if r.get('issue_severity', '').upper() in ['HIGH', 'MEDIUM']]
+            
+            if high_severity:
+                print(f'⚠️ Found {len(high_severity)} medium/high severity security issues')
+                for issue in high_severity[:3]:  # Show first 3
+                    print(f'  - {issue.get(\"test_name\", \"unknown\")}: {issue.get(\"issue_text\", \"\")}')
+                    print(f'    File: {issue.get(\"filename\", \"unknown\")}:{issue.get(\"line_number\", \"?\")}')
+            else:
+                print('✅ No high-severity security issues found')
+        except (FileNotFoundError, json.JSONDecodeError):
+            print('⚠️ Could not parse Bandit report')
+        
+        # Check Semgrep report
+        try:
+            with open('semgrep-report.json', 'r') as f:
+                semgrep_data = json.load(f)
+            
+            results = semgrep_data.get('results', [])
+            high_severity = [r for r in results 
+                           if r.get('extra', {}).get('severity', '').upper() in ['ERROR', 'WARNING']]
+            
+            if high_severity:
+                print(f'⚠️ Found {len(high_severity)} Semgrep security findings')
+                for finding in high_severity[:3]:  # Show first 3
+                    print(f'  - {finding.get(\"check_id\", \"unknown\")}: {finding.get(\"extra\", {}).get(\"message\", \"\")}')
+            else:
+                print('✅ No high-severity Semgrep findings')
+        except (FileNotFoundError, json.JSONDecodeError):
+            print('⚠️ Could not parse Semgrep report')
+        "
+
+  license-compliance:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies and license checker
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pip-licenses
+        
+    - name: Generate license report
+      run: |
+        pip-licenses --format=json --output-file=license-report.json
+        pip-licenses --format=plain-vertical
+        
+    - name: Check for license compliance
+      run: |
+        python -c "
+        import json
+        
+        # Define allowed licenses (adjust based on your organization's policy)
+        allowed_licenses = [
+            'MIT License', 'MIT', 'BSD License', 'BSD', 'Apache Software License',
+            'Apache 2.0', 'Apache License 2.0', 'Python Software Foundation License',
+            'Mozilla Public License 2.0 (MPL 2.0)', 'ISC License (ISCL)'
+        ]
+        
+        try:
+            with open('license-report.json', 'r') as f:
+                licenses = json.load(f)
+            
+            non_compliant = []
+            for pkg in licenses:
+                license_name = pkg.get('License', 'Unknown')
+                if license_name not in allowed_licenses and license_name != 'UNKNOWN':
+                    non_compliant.append(f'{pkg.get(\"Name\", \"unknown\")} ({license_name})')
+            
+            if non_compliant:
+                print(f'⚠️ Found {len(non_compliant)} packages with non-compliant licenses:')
+                for pkg in non_compliant[:10]:  # Show first 10
+                    print(f'  - {pkg}')
+                print('\\nPlease review these licenses for compliance with your organization policy.')
+            else:
+                print('✅ All package licenses are compliant')
+                
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f'⚠️ Could not parse license report: {e}')
+        "
+        
+    - name: Upload license report
+      uses: actions/upload-artifact@v3
+      with:
+        name: license-compliance-report
+        path: license-report.json

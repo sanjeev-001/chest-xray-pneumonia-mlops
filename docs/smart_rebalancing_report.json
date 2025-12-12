@@ -1,0 +1,67 @@
+{
+  "rebalancing_summary": {
+    "dataset_path": "data\\chest_xray_final",
+    "rebalancing_timestamp": "2025-10-26T12:51:23.037837",
+    "strategy": "Smart rebalancing - preserve augmented training data"
+  },
+  "original_counts": {
+    "train": {
+      "NORMAL": 1011,
+      "NORMAL_augmented": 1508,
+      "PNEUMONIA": 2519
+    },
+    "val": {
+      "NORMAL": 7,
+      "PNEUMONIA": 8
+    },
+    "test": {
+      "NORMAL": 65,
+      "PNEUMONIA": 294
+    }
+  },
+  "final_counts": {
+    "train": {
+      "NORMAL": 483,
+      "NORMAL_augmented": 1508,
+      "PNEUMONIA": 1991
+    },
+    "val": {
+      "NORMAL": 264,
+      "PNEUMONIA": 264
+    },
+    "test": {
+      "NORMAL": 264,
+      "PNEUMONIA": 264
+    }
+  },
+  "distribution_percentages": {
+    "train": 79.03930131004367,
+    "val": 10.480349344978166,
+    "test": 10.480349344978166
+  },
+  "images_moved": {
+    "to_validation": {
+      "NORMAL": 264,
+      "PNEUMONIA": 264
+    },
+    "to_test": {
+      "NORMAL": 264,
+      "PNEUMONIA": 264
+    }
+  },
+  "augmented_data_preserved": 1508,
+  "class_balance_achieved": {
+    "val": {
+      "normal_count": 264,
+      "pneumonia_count": 264,
+      "ratio": "1:1.00",
+      "balanced": true
+    },
+    "test": {
+      "normal_count": 264,
+      "pneumonia_count": 264,
+      "ratio": "1:1.00",
+      "balanced": true
+    }
+  }
+}

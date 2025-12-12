@@ -1,0 +1,56 @@
+{
+  "dataset_summary": {
+    "dataset_path": "data\\chest_xray_final",
+    "analysis_timestamp": "2025-10-26T12:14:41.861646",
+    "total_images": 5412,
+    "dataset_status": "READY_FOR_TRAINING"
+  },
+  "detailed_counts": {
+    "train": {
+      "NORMAL": 1011,
+      "NORMAL_augmented": 1508,
+      "PNEUMONIA": 2519
+    },
+    "val": {
+      "NORMAL": 7,
+      "PNEUMONIA": 8
+    },
+    "test": {
+      "NORMAL": 65,
+      "PNEUMONIA": 294
+    }
+  },
+  "training_set_analysis": {
+    "NORMAL_original": 1011,
+    "NORMAL_augmented": 1508,
+    "NORMAL_total": 2519,
+    "PNEUMONIA": 2519,
+    "class_balance_ratio": "1:1.00",
+    "perfectly_balanced": true
+  },
+  "dataset_quality": {
+    "image_format": "JPEG",
+    "image_size": "224x224",
+    "color_channels": "RGB",
+    "quality_validated": true,
+    "duplicates_removed": true,
+    "blur_filtered": true,
+    "medical_grade": true
+  },
+  "augmentation_details": {
+    "augmentation_applied": true,
+    "augmented_images_created": 1508,
+    "augmentation_techniques": [
+      "horizontal_flip",
+      "vertical_flip",
+      "rotation",
+      "brightness_adjustment",
+      "contrast_adjustment",
+      "zoom",
+      "gamma_correction",
+      "noise_addition",
+      "shifting"
+    ],
+    "medical_appropriateness": "All augmentations are medically appropriate for chest X-rays"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "analysis_timestamp": "2025-10-26T12:46:33.462091",
+  "dataset_path": "data\\chest_xray_final",
+  "image_counts": {
+    "train": {
+      "NORMAL": 1011,
+      "NORMAL_augmented": 1508,
+      "PNEUMONIA": 2519,
+      "total": 5038
+    },
+    "val": {
+      "NORMAL": 7,
+      "PNEUMONIA": 8,
+      "total": 15
+    },
+    "test": {
+      "NORMAL": 65,
+      "PNEUMONIA": 294,
+      "total": 359
+    }
+  },
+  "analysis": {
+    "dataset_totals": {
+      "train": 5038,
+      "val": 15,
+      "test": 359,
+      "total": 5412
+    },
+    "split_percentages": {
+      "train": 93.08943089430895,
+      "val": 0.2771618625277162,
+      "test": 6.63340724316334
+    },
+    "class_balance_analysis": {
+      "train": {
+        "normal_count": 2519,
+        "pneumonia_count": 2519,
+        "ratio": "1:1.00",
+        "balance_status": "balanced"
+      },
+      "val": {
+        "normal_count": 7,
+        "pneumonia_count": 8,
+        "ratio": "1:1.14",
+        "balance_status": "balanced"
+      },
+      "test": {
+        "normal_count": 65,
+        "pneumonia_count": 294,
+        "ratio": "1:4.52",
+        "balance_status": "imbalanced"
+      }
+    },
+    "recommendations": [
+      "Increase validation set size (current: 15, recommended: 100-500)",
+      "Balance test set (current ratio: 1:4.52)",
+      "Increase validation set to 10-15% of dataset (current: 0.3%)",
+      "Consider increasing test set to 15-20% of dataset (current: 6.6%)"
+    ],
+    "issues_found": [
+      "Validation set too small",
+      "Test set imbalanced",
+      "Validation set proportion too small",
+      "Test set proportion small"
+    ]
+  },
+  "rebalancing_plan": {
+    "rebalancing_needed": true,
+    "actions": [
+      "Move 634 images from train to validation",
+      "Move 615 images from train to test",
+      "Balance classes within validation set",
+      "Balance classes within test set",
+      "Ensure no data leakage between splits"
+    ],
+    "target_sizes": {
+      "train": 3789,
+      "val": 649,
+      "test": 974
+    },
+    "redistribution_plan": {
+      "val": {
+        "NORMAL": 324,
+        "PNEUMONIA": 324
+      },
+      "test": {
+        "NORMAL": 487,
+        "PNEUMONIA": 487
+      }
+    }
+  }
+}

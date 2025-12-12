@@ -1,0 +1,45 @@
+# Core ML libraries
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0.0
+
+# Image processing
+opencv-python>=4.5.0
+Pillow>=8.0.0
+albumentations>=1.3.0
+imagehash>=4.3.0
+
+# Visualization and plotting
+matplotlib>=3.5.0
+seaborn>=0.11.0
+plotly>=5.0.0
+
+# Medical imaging specific
+torchsummary>=1.5.0
+
+# MLOps tools
+mlflow>=2.0.0
+dvc>=3.16.0
+optuna>=3.0.0
+
+# API and web
+fastapi>=0.95.2
+uvicorn>=0.20.0
+pydantic>=1.10.12
+
+# Database and storage
+psycopg2-binary>=2.9.0
+boto3>=1.26.0
+minio>=7.1.0
+
+# Monitoring and logging
+prometheus-client>=0.16.0
+grafana-api>=1.0.0
+
+# Utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+click>=8.0.0
+tqdm>=4.64.0
